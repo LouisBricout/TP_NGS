@@ -74,6 +74,7 @@ java -jar ${PICARD} CreateSequenceDictionary \
 
 # Choose variable names
 FILE_NAME=HG02024
+#HG02024=daughter, HG02025=mother, HG02026=father
 
 # Mark Duplicate reads
 # Command: MarkDuplicates (PICARDtools)
@@ -86,6 +87,31 @@ java -jar ${PICARD} MarkDuplicates \
 	M=${FILE_NAME}.dup_metrics.txt
 
 # Make sure that index already obtained. Else, do it now
+
+#on récupère le fichier index de mother en réutilisant le code de father
+
+# Variables definition
+#FTP_SEQ_FOLDER=ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/ # Ftp folder from 1000Genomes project
+#SAMPLE_NAME=HG02025 # Sample
+#contient les reads de la mère
+
+# Download index file containing sequencing runs information
+# Command: wget
+# Input: url (http:// or ftp://)
+# Ouput: text file (.index)
+#wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/20130502.phase3.analysis.sequence.index -O 20130502.phase3.index
+# contient les infos de tous les runs de 1000 génomes, on va extraire celles de la mère
+
+# Filter paired exome sequencing runs related to mother (HG02025)
+# Command: grep && grep -v
+# Input: tab-separated values file (.index)
+# Ouput: filtered comma-separated values file (.index)
+#grep ${SAMPLE_NAME} 20130502.phase3.index | grep "exome" | grep 'PAIRED' | grep 'Pond-' | grep -v 'Solexa' | grep -v 'from blood' | grep -v '_1.filt.fastq.gz' | grep -v '_2.filt.fastq.gz' | sed 's/\t/,/g' > mother.index
+#on récupère les données de la mère sur le fichier ci-dessus
+
+
+# Make sure that index already obtained. Else, do it now
+
 # Command: samtools index / BuilBamIndex (PICARDtools)
 # Input: alignment (.bam)
 java -jar ${PICARD} BuildBamIndex \
@@ -100,11 +126,12 @@ java -jar ${PICARD} BuildBamIndex \
 # Command: gatk RealignerTargetCreator
 # Input: preprocessed alignment (.bam) + compressed known indels (.vcf.gz) + reference genome (.fa)
 # Output: list of intervals (.list / .txt)
-#gatk RealignerTargetCreator \
 java -jar ${GATK} -T RealignerTargetCreator \
-	xxxxxxxxxxxxxxxxxxxxx
+	-R ${REF_GENOME} \
 	-I ${FILE_NAME}.marked_dups.bam \
+	--known ${KNOWN_INDELS} \
 	-o ${FILE_NAME}.target_intervals.list 
+#la syntaxe de la ommande a été récupérée sur GATK (software.broadinstitute.org)
 
 # Perform local realignement
 # Command: gatk IndelRealigner
@@ -112,10 +139,11 @@ java -jar ${GATK} -T RealignerTargetCreator \
 # Output: realigned alignment (.bam)
 #gatk IndelRealigner \
 java -jar ${GATK} -T IndelRealigner \
-	xxxxxxxxxxxxxxxxxxxxx
+	-R ${REF_GENOME} \
 	-I ${FILE_NAME}.marked_dups.bam \
+	-known ${KNOWN_INDELS} \
+	-targetIntervals ${FILE_NAME}.target_intervals.list \
 	-o ${FILE_NAME}.realigned_reads.bam
-
 
 
 ################################
@@ -168,4 +196,7 @@ java -jar ${GATK} -T HaplotypeCaller \
 # Command: gatk GenotypeGVCFs
 # Input : genomic variant calling files (.g.vcf) + reference genome (.fa)
 # Output: Variant calling file (.vcf)
-xxxxxxxxxxxxxxxxxxxxx
+java -jar ${GATK} -T GenotypeGVCFs \
+   -R ${REF_GENOME} \
+   --variant ${FILE_NAME}.g.vcf \
+   -o ${FILE_NAME}.vcf

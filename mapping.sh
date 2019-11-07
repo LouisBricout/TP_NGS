@@ -30,7 +30,8 @@ java -jar ${PICARD}
 # Input: url (http:// or ftp://)
 # Ouput: compressed reference sequence (.fa.gz)
 wget ftp://ftp.ensembl.org/pub/release-98/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.20.fa.gz -O Homo_sapiens.Chr20.fa.gz
-# On récupère la séquence du Chr.20 depuis le site
+
+# On récupère la séquence du Chr.20 depuis un site. On enregistre la séquence dans un fichier.
 
 # Extract the reference chromosome
 # Command: gunzip
@@ -38,11 +39,15 @@ wget ftp://ftp.ensembl.org/pub/release-98/fasta/homo_sapiens/dna/Homo_sapiens.GR
 # Ouput: reference sequence (remove .gz file)
 gunzip Homo_sapiens.Chr20.fa.gz
 
+#extraction de la séquence de référence du Chromosome 20
+
 # Index the reference chromosome
 # Command: bwa index
 # Input: reference (.fa)
 # Ouput: indexed reference (.fa.amb, .fa.ann, .fa.bwt, fa.pac, .fa.sa)
 bwa index Homo_sapiens.Chr20.fa
+
+#grosso modo, numérotation
 # l'indexation est une étape préalable nécessaire au bwa mem, qui a besoin ce ça + le fichier original
 
 ######################################################
@@ -85,6 +90,7 @@ bwa index Homo_sapiens.Chr20.fa
 # Input: url (http:// or ftp://)
 # Ouput: compressed sequencing reads (.fastq.gz)
 wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR822/SRR822145/SRR822145_2.fastq.gz -O HG02024_SRR822145_2.filt.fastq.gz
+
 #on récupère les données de la fille
 
 # Map the paired sequencing reads against the reference Human chromosome 20
@@ -94,7 +100,8 @@ wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR822/SRR822145/SRR822145_2.fastq.gz -O
 # Input: indexed reference (.fa), and compressed sequencing reads (.fastq.gz)
 # Ouput: alignment (.sam)
 bwa mem -M -t 4 Homo_sapiens.Chr20.fa HG02024_SRR822145_1.filt.fastq.gz HG02024_SRR822145_2.filt.fastq.gz > HG02024_SRR822145.sam
-#alignement des reads sur la séquence de référence, utilise des paired reads (reads dont on sait qu'ils sont proche en pb)
+
+#alignement des reads sur la séquence de référence, utilise des paired reads (reads dont on sait qu'ils sont proches sur la séquence du Chr 20)
 # si un read s'aligne, l'autre ne va pas loin = + rapide
 # commence à aligner à partir du milieu du read, puis étend de chaque côté pour voir si ça fitte
 
@@ -105,6 +112,7 @@ bwa mem -M -t 4 Homo_sapiens.Chr20.fa HG02024_SRR822145_1.filt.fastq.gz HG02024_
 # Input: alignment (.sam)
 # Ouput: text file (human and computer readable)
 samtools flagstat HG02024_SRR822145.sam > HG02024_SRR822145.sam.flagstats
+
 #analyse stat de l'alignement
 
 # Compress the alignment and filter unaligned reads
@@ -121,11 +129,14 @@ samtools flagstat HG02024_SRR822145.sam > HG02024_SRR822145.sam.flagstats
 # Ouput: compressed alignment (.bam)
 samtools view -@ 4 -S -b -h -f 3 HG02024_SRR822145.sam > HG02024_SRR822145.bam
 
+#ressort une version compressée de l'alignement dont on a ôté les reads qui n'ont pas pu être alignés
+
 # Sort the alignment
 # Command: samtools sort
 # Input: compressed alignment (.bam)
 # Ouput: sorted and compressed alignment (.bam)
 samtools sort HG02024_SRR822145.bam > HG02024_SRR822145.sorted.bam
+
 #met les reads dans l'ordre de leur position sur le chromosome
 
 # Add Read group (cf https://gatkforums.broadinstitute.org/gatk/discussion/6472/read-groups)
@@ -228,13 +239,6 @@ wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/20130502.phase3.analysis.se
 grep ${SAMPLE_NAME} 20130502.phase3.index | grep "exome" | grep 'PAIRED' | grep 'Pond-' | grep -v 'Solexa' | grep -v 'from blood' | grep -v '_1.filt.fastq.gz' | grep -v '_2.filt.fastq.gz' | sed 's/\t/,/g' > father.index
 #on récupère les données du père sur le fichier ci-dessus
 
-# File containing the list of alignments (each line is a .bam file)
-# This file is necessary to merge multiple alignments into a single alignment.
-# Command: touch
-# Input: file name
-# Ouput: empty file (.bamlist)
-touch father.bamlist
-
 NUMBER_RUNS=8
 #head -n ${NUMBER_RUNS}
 #les deux lignes ci-dessus sont, en remplacement du cat, une façon de gérer le nombre de reads à computer
@@ -267,19 +271,22 @@ do
     java -jar ${PICARD} AddOrReplaceReadGroups I=${SAMPLE_NAME}_${RUN_ID}.sorted.bam O=${SAMPLE_NAME}_${RUN_ID}.sorted.RG.bam \
                                          RGID=${RUN_ID} RGLB=${LIBRARY_NAME} RGPL=${INSTRUMENT_PLATFORM} \
                                          RGPU=${RUN_NAME} RGSM=${SAMPLE_NAME} RGPI=${INSERT_SIZE}
-
-    # Append the file name (.bam) to the list of alignments that will be merged
-    echo ${SAMPLE_NAME}_${RUN_ID}.sorted.RG.bam >> father.bamlist
 done
+# File containing the list of alignments (each line is a .bam file)
+# This file is necessary to merge multiple alignments into a single alignment.
+# Command: touch
+# Input: file name
+# Ouput: empty file (.bamlist)
+ls ${SAMPLE_NAME}*.RG.bam > ${SAMPLE_NAME}.bamlist
 
 # Merge the list of alignments into a single file
 # Command: samtools merge
 # Input: file containing the list of alignments (each line is a .bam file)
 # Ouput: alignment (.bam)
-samtools merge -b father.bamlist father.bam 
+samtools merge -b ${SAMPLE_NAME}.bamlist ${SAMPLE_NAME}.bam 
 
 # Index the alignment
 # Command: samtools index
 # Input: alignment (.sam or .bam)
 # Ouput: indexed alignment (.sam.bai or .bam.bai)
-samtools index father.bam
+samtools index ${SAMPLE_NAME}.bam
