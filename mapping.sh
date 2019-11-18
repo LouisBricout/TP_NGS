@@ -147,7 +147,7 @@ java -jar ${PICARD} AddOrReplaceReadGroups I=HG02024_SRR822145.sorted.bam \
                                          O=daughter.bam \
                                          RGID=SRR822145 RGLB=Pond-206419 RGPL=ILLUMINA \
                                          RGPU=C19U4ACXX121217.7.tagged_373.bam RGSM=HG02024 RGPI=160
-#Annotation du fichier avec des métadonnées dont on en disposait pas vaant, permet d'affiner l'analyse des reads
+#Annotation du fichier avec des métadonnées dont on en disposait pas avant, permet d'affiner l'analyse des reads
 # (séquenceur, library, numéro du run, flowcell et lane où on a fait le run, individu etc) --> permet de détecter et corriger des biais dans l'analyse
 
 # (Optional)

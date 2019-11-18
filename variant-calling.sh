@@ -73,7 +73,7 @@ java -jar ${PICARD} CreateSequenceDictionary \
 #############################
 
 # Choose variable names
-FILE_NAME=HG02024
+FILE_NAME=HG02025
 #HG02024=daughter, HG02025=mother, HG02026=father
 
 # Mark Duplicate reads

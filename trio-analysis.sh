@@ -62,6 +62,7 @@ java -jar ${GATK} -T PhaseByTransmission \
 	--variant trio.vcf \
 	-ped ${PEDIGREE}.txt \
 	-o trio.phased.vcf
+#le phasing utilise le pedigree (relations entre personnes des reads) pour analyser les reads des =/= individus
 
 # Evaluate variants by computing control metrics
 # Command: gatk VariantEval
@@ -72,6 +73,7 @@ java -jar ${GATK} -T VariantEval \
 	--eval:set1 trio.vcf \
 	--eval:set2 trio.phased.vcf \
 	-o trio.phased.VE.txt
+#analyse des variants détectés, proportion, type, répartition, etc
 
 # Tabulate the number of sites which overlap and share alleles
 # Command: gatk GenotypeConcordance
@@ -82,3 +84,5 @@ java -jar ${GATK} -T VariantEval \
    -eval trio.vcf \
    -comp trio.phased.vcf \
    -o Report_file
+#permet d'évaluer ce qu'on a fait en phasant les reads, c'est-à-dire en pondérant la fiabilité des reads par les relations familiales qui lient les trois échantillons
+#ex: dad influence kid, mom influence kid
