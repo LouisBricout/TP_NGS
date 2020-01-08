@@ -31,4 +31,4 @@ Built with Python.
 
 #Acknowledgements
 
-Major contributors include Granier E., Hans.J, Humbert.A
+Major contributors include Eriau.E, Granier E., Hans.J, Humbert.A and Latrille.T
